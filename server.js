@@ -1,12 +1,13 @@
 const express = require("express");
 const mysql = require("mysql");
+require("dotenv").config();
 const cors = require("cors");
 const bcrypt = require("bcrypt"); //To encrypt the password
 const jwt = require("jsonwebtoken"); //To replace local storage
 const JWT_SECRET = "my_super_secret_key_12345";
 
 const app = express();
-const PORT = 5000;
+const PORT = process.env.PORT || 5000;
 
 app.use(cors());
 app.use(express.json());
@@ -45,8 +46,8 @@ const verifyToken = (req, res, next) => {
   });
 };
 
-app.use('/api/upload', verifyToken, uploadRoutes);
-app.use('/api/courses', verifyToken, courseRoutes);
+app.use("/api/upload", verifyToken, uploadRoutes);
+app.use("/api/courses", verifyToken, courseRoutes);
 
 app.get("/", (req, res) => {
   res.send("🚀 Backend is working!");
@@ -157,6 +158,4 @@ app.get("/verify", (req, res) => {
   });
 });
 
-app.listen(PORT, () => {
-  console.log(`✅ Backend running at http://localhost:${PORT}`);
-});
+app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
