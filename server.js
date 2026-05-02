@@ -70,7 +70,7 @@ app.post("/Register", async (req, res) => {
     const hashedPassword = await bcrypt.hash(req.body.pass, saltRounds);
 
     const sql =
-      "INSERT INTO users (`username`,`email`,`pass`,`role`) VALUES(?)";
+      "INSERT INTO users (`username`,`email`,`password`,`role`) VALUES(?)";
     const values = [
       req.body.username,
       req.body.email,
