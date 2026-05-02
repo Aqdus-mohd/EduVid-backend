@@ -80,6 +80,9 @@ app.post("/Register", async (req, res) => {
 
     db.query(sql, [values], (err, data) => {
       if (err) {
+        // Print the real error to the Render terminal so we can see it!
+        console.error("🚨 DATABASE ERROR:", err); 
+
         //If email is UNIQUE in your DB, this catches duplicates!
         if (err.code === "ER_DUP_ENTRY") {
           return res.json({ message: "Email already exists! Please Log In." });
