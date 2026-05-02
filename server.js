@@ -67,7 +67,7 @@ app.post("/Register", async (req, res) => {
   try {
     //SCRAMBLE THE PASSWORD
     const saltRounds = 10;
-    const hashedPassword = await bcrypt.hash(req.body.password, saltRounds);
+    const hashedPassword = await bcrypt.hash(req.body.pass, saltRounds);
 
     const sql =
       "INSERT INTO users (`username`,`email`,`password`,`role`) VALUES(?)";
@@ -111,7 +111,7 @@ app.post("/Login", (req, res) => {
     }
 
     if (data.length > 0) {
-      const isMatch = await bcrypt.compare(req.body.password, data[0].password);
+      const isMatch = await bcrypt.compare(req.body.pass, data[0].password);
 
       if (isMatch) {
         const payload = {
