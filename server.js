@@ -70,7 +70,7 @@ app.post("/Register", async (req, res) => {
     const hashedPassword = await bcrypt.hash(req.body.pass, saltRounds);
 
     const sql =
-      "INSERT INTO details (`username`,`email`,`pass`,`role`) VALUES(?)";
+      "INSERT INTO users (`username`,`email`,`pass`,`role`) VALUES(?)";
     const values = [
       req.body.username,
       req.body.email,
@@ -98,12 +98,12 @@ app.post("/Login", (req, res) => {
   console.log("📥 Received login data:", req.body);
 
   // 👇 FIX: Removed "AND pass = ?" from the query!
-  const sql = "SELECT * FROM details WHERE email = ?";
+  const sql = "SELECT * FROM users WHERE email = ?";
   const values = [req.body.email];
 
   db.query(sql, values, async (err, data) => {
     if (err) {
-      console.error("SQL Error details:", err); // Pro-tip: This helps see the exact error in your terminal
+      console.error("SQL Error users:", err); // Pro-tip: This helps see the exact error in your terminal
       return res.json(" Mysql Error");
     }
 
