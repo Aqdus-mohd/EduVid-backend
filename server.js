@@ -59,7 +59,7 @@ app.post("/Register", async (req, res) => {
 
   // SECURITY CHECK: Only allow 'teacher' if they know the code
   if (req.body.role === "teacher") {
-    if (req.body.passKey !== "UIT_TEACHER_2025") {
+    if (req.body.passKey !== process.env.TEACHER_SECRET) {
       return res.json({ message: "Invalid Pass Key! Registration failed." });
     }
   }
