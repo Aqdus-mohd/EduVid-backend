@@ -7,87 +7,99 @@ const streamifier = require("streamifier");
 const db = require("./db");
 
 // 1. Configure Cloudinary
-// (Store these securely in a .env file, not in your code!)
 cloudinary.config({
   cloud_name: "dq4usxrkl",
   api_key: "667861286474246",
   api_secret: "u9s1YvN9jCuNkRDiEnmoTC1cpf4",
 });
 
-// 2. Configure Multer
-// This tells Multer to store the file in memory as a Buffer.
+// 2. Configure Multer (Memory Storage)
 const storage = multer.memoryStorage();
 const upload = multer({ storage: storage });
 
-// 3. Define the Upload Route
-router.post("/finish-upload", upload.single("video"), (req, res) => {
-  console.log("🚨 UPLOAD SPY - TEXT DATA:", req.body);
+// 🛑 A helper function to make Cloudinary uploads async/await friendly!
+const uploadToCloudinary = (buffer, resourceType) => {
+  return new Promise((resolve, reject) => {
+    const stream = cloudinary.uploader.upload_stream(
+      { resource_type: resourceType },
+      (error, result) => {
+        if (error) reject(error);
+        else resolve(result.secure_url);
+      }
+    );
+    streamifier.createReadStream(buffer).pipe(stream);
+  });
+};
 
-  // Get other form data (e.g., title)
+// 3. Define the Dual-Upload Route
+// 🛑 CHANGED: Now accepting an array of fields (video AND thumbnail)
+router.post("/finish-upload", upload.any(), async (req, res) => {
+  
+  console.log("🚨 UPLOAD SPY - TEXT DATA:", req.body);
+  console.log("🚨 UPLOAD SPY - FILES RECEIVED:", req.files); // Let's see exactly what arrived!
+
   const { title, description, courseId } = req.body;
-  const userId = req.user.id;//sequre id
-  if (!req.file) {
+  const userId = req.user.id; 
+
+  // Because we used upload.any(), req.files is now an Array.
+  // We need to manually find which file is the video and which is the thumbnail.
+  const videoFile = req.files ? req.files.find(f => f.fieldname === "video") : null;
+  const thumbnailFile = req.files ? req.files.find(f => f.fieldname === "thumbnail") : null;
+
+  // Check if the video file exists (video is mandatory)
+  if (!videoFile) {
     return res.status(400).json({ message: "No video file uploaded." });
   }
 
-  // 4. Create the upload stream to Cloudinary
-  // 'resource_type: "video"' is important!
-  const uploadStream = cloudinary.uploader.upload_stream(
-    { resource_type: "video" },
-    (error, result) => {
-      if (error) {
-        console.error("Cloudinary Error:", error);
-        return res
-          .status(500)
-          .json({ message: "Error uploading to Cloudinary." });
+  try {
+    // 4. Upload the Video
+    console.log("Uploading video to Cloudinary...");
+    const videoUrl = await uploadToCloudinary(videoFile.buffer, "video");
+    
+    // 5. Upload the Thumbnail (if the user provided one)
+    let thumbnailUrl = null;
+    if (thumbnailFile) {
+      console.log("Uploading thumbnail to Cloudinary...");
+      thumbnailUrl = await uploadToCloudinary(thumbnailFile.buffer, "image");
+    }
+
+    // 6. Save BOTH URLs to MySQL
+    const sql = "INSERT INTO videos (title, description, video_url, thumbnail_url, user_id, course_id) VALUES (?, ?, ?, ?, ?, ?)";
+    
+    db.query(
+      sql,
+      [title, description, videoUrl, thumbnailUrl, userId, courseId],
+      (err, dbResult) => {
+        if (err) {
+          console.error("MySQL Error:", err);
+          return res.status(500).json({ message: "Error saving to database." });
+        }
+
+        console.log("✅ Successfully saved to DB!");
+        res.status(201).json({
+          message: "Video and Thumbnail uploaded successfully!",
+          videoUrl: videoUrl,
+          thumbnailUrl: thumbnailUrl,
+          id: dbResult.insertId,
+        });
       }
+    );
 
-      // 5. We have the Cloudinary URL (result.secure_url)
-      // Now, save the URL and title to MySQL
-      const videoUrl = result.secure_url;
-      const sql =
-        "INSERT INTO videos (title, description, video_url, user_id, course_id) VALUES (?, ?, ?, ?, ?)";
-
-      db.query(
-        sql,
-        [title, description, videoUrl, userId, courseId],
-        (err, dbResult) => {
-          if (err) {
-            console.error("MySQL Error:", err);
-            return res
-              .status(500)
-              .json({ message: "Error saving to database." });
-          }
-
-          // 6. Send success response back to React
-          res.status(201).json({
-            message: "Video uploaded successfully!",
-            url: videoUrl,
-            id: dbResult.insertId,
-          });
-        },
-      );
-    },
-  );
-
-  // 7. Pipe the file buffer from Multer into the Cloudinary stream
-  streamifier.createReadStream(req.file.buffer).pipe(uploadStream);
+  } catch (error) {
+    console.error("Cloudinary Upload Error:", error);
+    res.status(500).json({ message: "Error uploading files to Cloudinary." });
+  }
 });
 
-//get videos according to course
-
+// Get videos according to course
 router.get("/course/:courseId", (req, res) => {
   const courseId = req.params.courseId;
-  console.log(
-    `\n🕵️ BACKEND SPY: Looking for videos where course_id = ${courseId}`,
-  );
+  console.log(`\n🕵️ BACKEND SPY: Looking for videos where course_id = ${courseId}`);
+  
   const sql = "SELECT * FROM videos WHERE course_id = ?";
-
   db.query(sql, [courseId], (err, data) => {
     if (err) return res.status(500).json(err);
-
-    console.log(`✅ FOUND ${data.length} VIDEOS IN DB:`, data);
-
+    console.log(`✅ FOUND ${data.length} VIDEOS IN DB`);
     return res.json(data);
   });
 });
