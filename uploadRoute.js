@@ -20,6 +20,8 @@ const upload = multer({ storage: storage });
 // 🛑 A helper function to make Cloudinary uploads async/await friendly!
 const uploadToCloudinary = (buffer, resourceType) => {
   return new Promise((resolve, reject) => {
+    const options = { resource_type: resourceType };
+
     const stream = cloudinary.uploader.upload_stream(
       { resource_type: resourceType },
       (error, result) => {
