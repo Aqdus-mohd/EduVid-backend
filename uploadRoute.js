@@ -158,7 +158,7 @@ router.put("/:id", upload.single("thumbnail"), (req, res) => {
   // If a new file is uploaded, use its path. If not, set it to null.
   let finalThumbnailUrl = null; 
   if (req.file) {
-    finalThumbnailUrl = req.file.path || req.file.secure_url; 
+    finalThumbnailUrl = req.file.path || req.file.secure_url || req.file.cloudinaryUrl || req.file.filename;
   }
 
   // 3. THE SAFE SQL QUERY:
