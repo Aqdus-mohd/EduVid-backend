@@ -26,7 +26,7 @@ const uploadToCloudinary = (buffer, resourceType) => {
       (error, result) => {
         if (error) reject(error);
         else resolve(result.secure_url);
-      }
+      },
     );
     streamifier.createReadStream(buffer).pipe(stream);
   });
@@ -35,17 +35,20 @@ const uploadToCloudinary = (buffer, resourceType) => {
 // 3. Define the Dual-Upload Route
 // 🛑 CHANGED: Now accepting an array of fields (video AND thumbnail)
 router.post("/finish-upload", upload.any(), async (req, res) => {
-  
   console.log("🚨 UPLOAD SPY - TEXT DATA:", req.body);
   console.log("🚨 UPLOAD SPY - FILES RECEIVED:", req.files); // Let's see exactly what arrived!
 
   const { title, description, courseId } = req.body;
-  const userId = req.user.id; 
+  const userId = req.user.id;
 
   // Because we used upload.any(), req.files is now an Array.
   // We need to manually find which file is the video and which is the thumbnail.
-  const videoFile = req.files ? req.files.find(f => f.fieldname === "video") : null;
-  const thumbnailFile = req.files ? req.files.find(f => f.fieldname === "thumbnail") : null;
+  const videoFile = req.files
+    ? req.files.find((f) => f.fieldname === "video")
+    : null;
+  const thumbnailFile = req.files
+    ? req.files.find((f) => f.fieldname === "thumbnail")
+    : null;
 
   // Check if the video file exists (video is mandatory)
   if (!videoFile) {
@@ -56,7 +59,7 @@ router.post("/finish-upload", upload.any(), async (req, res) => {
     // 4. Upload the Video
     console.log("Uploading video to Cloudinary...");
     const videoUrl = await uploadToCloudinary(videoFile.buffer, "video");
-    
+
     // 5. Upload the Thumbnail (if the user provided one)
     let thumbnailUrl = null;
     if (thumbnailFile) {
@@ -65,8 +68,9 @@ router.post("/finish-upload", upload.any(), async (req, res) => {
     }
 
     // 6. Save BOTH URLs to MySQL
-    const sql = "INSERT INTO videos (title, description, video_url, thumbnail_url, user_id, course_id) VALUES (?, ?, ?, ?, ?, ?)";
-    
+    const sql =
+      "INSERT INTO videos (title, description, video_url, thumbnail_url, user_id, course_id) VALUES (?, ?, ?, ?, ?, ?)";
+
     db.query(
       sql,
       [title, description, videoUrl, thumbnailUrl, userId, courseId],
@@ -83,9 +87,8 @@ router.post("/finish-upload", upload.any(), async (req, res) => {
           thumbnailUrl: thumbnailUrl,
           id: dbResult.insertId,
         });
-      }
+      },
     );
-
   } catch (error) {
     console.error("Cloudinary Upload Error:", error);
     res.status(500).json({ message: "Error uploading files to Cloudinary." });
@@ -95,8 +98,10 @@ router.post("/finish-upload", upload.any(), async (req, res) => {
 // Get videos according to course
 router.get("/course/:courseId", (req, res) => {
   const courseId = req.params.courseId;
-  console.log(`\n🕵️ BACKEND SPY: Looking for videos where course_id = ${courseId}`);
-  
+  console.log(
+    `\n🕵️ BACKEND SPY: Looking for videos where course_id = ${courseId}`,
+  );
+
   const sql = "SELECT * FROM videos WHERE course_id = ?";
   db.query(sql, [courseId], (err, data) => {
     if (err) return res.status(500).json(err);
@@ -105,22 +110,24 @@ router.get("/course/:courseId", (req, res) => {
   });
 });
 
-
 // DELETE VIDEO ROUTE
-// Note: Path is just "/:id" because this file is already mounted on "/api/upload"
 router.delete("/:id", (req, res) => {
   // Security check: Only allow teachers to delete
   if (req.user.role !== "teacher") {
-    return res.status(403).json({ message: "Unauthorized. Only teachers can delete videos." });
+    return res
+      .status(403)
+      .json({ message: "Unauthorized. Only teachers can delete videos." });
   }
 
   const videoId = req.params.id;
-  const sql = "DELETE FROM videos WHERE id = ?"; 
+  const sql = "DELETE FROM videos WHERE id = ?";
 
   db.query(sql, [videoId], (err, result) => {
     if (err) {
       console.error("🚨 DATABASE ERROR DURING DELETE:", err);
-      return res.status(500).json({ message: "Database error while deleting video." });
+      return res
+        .status(500)
+        .json({ message: "Database error while deleting video." });
     }
 
     if (result.affectedRows === 0) {
@@ -131,27 +138,37 @@ router.delete("/:id", (req, res) => {
   });
 });
 
-// UPDATE VIDEO ROUTE 
+// UPDATE VIDEO ROUTE
 router.put("/:id", (req, res) => {
   // Security check: Only allow teachers to update
   if (req.user.role !== "teacher") {
-    return res.status(403).json({ message: "Unauthorized. Only teachers can update videos." });
+    return res
+      .status(403)
+      .json({ message: "Unauthorized. Only teachers can update videos." });
   }
 
   const videoId = req.params.id;
-  const { title, description } = req.body;
+  const { title, description, thumbnail_url } = req.body;
 
   if (!title || title.trim() === "") {
     return res.status(400).json({ message: "Title is required." });
   }
 
-  const sql = "UPDATE videos SET title = ?, description = ? WHERE id = ?";
-  const values = [title.trim(), description ? description.trim() : "", videoId];
+  const sql =
+    "UPDATE videos SET title = ?, description = ?, thumbnail_url = ? WHERE id = ?";
+  const values = [
+    title.trim(),
+    description ? description.trim() : "",
+    thumbnail_url ? thumbnail_url.trim() : "",
+    videoId,
+  ];
 
   db.query(sql, values, (err, result) => {
     if (err) {
       console.error("🚨 DATABASE ERROR DURING UPDATE:", err);
-      return res.status(500).json({ message: "Database error while updating video." });
+      return res
+        .status(500)
+        .json({ message: "Database error while updating video." });
     }
 
     if (result.affectedRows === 0) {
@@ -161,7 +178,5 @@ router.put("/:id", (req, res) => {
     return res.json({ message: "Video updated successfully!" });
   });
 });
-
-
 
 module.exports = router;
