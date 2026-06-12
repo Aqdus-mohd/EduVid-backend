@@ -138,43 +138,45 @@ router.delete("/:id", (req, res) => {
   });
 });
 
-// UPDATE VIDEO ROUTE
-router.put("/:id", (req, res) => {
-  // Security check: Only allow teachers to update
-  if (req.user.role !== "teacher") {
-    return res
-      .status(403)
-      .json({ message: "Unauthorized. Only teachers can update videos." });
+//EDIT
+router.put("/:id", upload.single("thumbnail"), (req, res) => {
+  
+  // Only allow teachers to make updates
+  if (!req.user || req.user.role !== "teacher") {
+    return res.status(403).json({ message: "Unauthorized. Only teachers can update videos." });
   }
 
   const videoId = req.params.id;
-  const { title, description, thumbnail_url } = req.body;
+  const { title, description } = req.body;
 
+  // Validation
   if (!title || title.trim() === "") {
     return res.status(400).json({ message: "Title is required." });
   }
 
-  const sql =
-    "UPDATE videos SET title = ?, description = ?, thumbnail_url = ? WHERE id = ?";
-  const values = [
-    title.trim(),
-    description ? description.trim() : "",
-    thumbnail_url ? thumbnail_url.trim() : "",
-    videoId,
-  ];
+  // CHECK FOR UPLOADED FILE: 
+  // If a new file is uploaded, use its path. If not, set it to null.
+  let finalThumbnailUrl = null; 
+  if (req.file) {
+    finalThumbnailUrl = req.file.path; 
+  }
+
+  // 3. THE SAFE SQL QUERY:
+  // IFNULL(?, thumbnail_url) means: If finalThumbnailUrl is null, keep the old thumbnail_url exactly as it is!
+  const sql = "UPDATE videos SET title = ?, description = ?, thumbnail_url = IFNULL(?, thumbnail_url) WHERE id = ?";
+  const values = [title.trim(), description ? description.trim() : "", finalThumbnailUrl, videoId];
 
   db.query(sql, values, (err, result) => {
     if (err) {
       console.error("🚨 DATABASE ERROR DURING UPDATE:", err);
-      return res
-        .status(500)
-        .json({ message: "Database error while updating video." });
+      return res.status(500).json({ message: "Database error while updating video." });
     }
 
     if (result.affectedRows === 0) {
       return res.status(404).json({ message: "Video not found." });
     }
 
+    // Return success response
     return res.json({ message: "Video updated successfully!" });
   });
 });
