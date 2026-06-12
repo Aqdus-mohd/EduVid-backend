@@ -46,6 +46,7 @@ const verifyToken = (req, res, next) => {
   });
 };
 
+
 app.use("/api/upload", verifyToken, uploadRoutes);
 app.use("/api/courses", verifyToken, courseRoutes);
 
@@ -160,5 +161,7 @@ app.get("/verify", (req, res) => {
     return res.json({ message: "Token is valid" });
   });
 });
+
+
 
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));

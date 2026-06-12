@@ -1,4 +1,3 @@
-console.log("✅✅✅ LOADED THE CORRECT UPLOAD FILE ✅✅✅");
 const express = require("express");
 const router = express.Router();
 const cloudinary = require("cloudinary").v2;
@@ -105,5 +104,64 @@ router.get("/course/:courseId", (req, res) => {
     return res.json(data);
   });
 });
+
+
+// DELETE VIDEO ROUTE
+// Note: Path is just "/:id" because this file is already mounted on "/api/upload"
+router.delete("/:id", (req, res) => {
+  // Security check: Only allow teachers to delete
+  if (req.user.role !== "teacher") {
+    return res.status(403).json({ message: "Unauthorized. Only teachers can delete videos." });
+  }
+
+  const videoId = req.params.id;
+  const sql = "DELETE FROM videos WHERE id = ?"; 
+
+  db.query(sql, [videoId], (err, result) => {
+    if (err) {
+      console.error("🚨 DATABASE ERROR DURING DELETE:", err);
+      return res.status(500).json({ message: "Database error while deleting video." });
+    }
+
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ message: "Video not found." });
+    }
+
+    return res.json({ message: "Video successfully deleted!" });
+  });
+});
+
+// UPDATE VIDEO ROUTE 
+router.put("/:id", (req, res) => {
+  // Security check: Only allow teachers to update
+  if (req.user.role !== "teacher") {
+    return res.status(403).json({ message: "Unauthorized. Only teachers can update videos." });
+  }
+
+  const videoId = req.params.id;
+  const { title, description } = req.body;
+
+  if (!title || title.trim() === "") {
+    return res.status(400).json({ message: "Title is required." });
+  }
+
+  const sql = "UPDATE videos SET title = ?, description = ? WHERE id = ?";
+  const values = [title.trim(), description ? description.trim() : "", videoId];
+
+  db.query(sql, values, (err, result) => {
+    if (err) {
+      console.error("🚨 DATABASE ERROR DURING UPDATE:", err);
+      return res.status(500).json({ message: "Database error while updating video." });
+    }
+
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ message: "Video not found." });
+    }
+
+    return res.json({ message: "Video updated successfully!" });
+  });
+});
+
+
 
 module.exports = router;
