@@ -177,7 +177,10 @@ router.put("/:id", upload.single("thumbnail"), (req, res) => {
     }
 
     // Return success response
-    return res.json({ message: "Video updated successfully!" });
+    return res.json({ 
+      message: "Video updated successfully!",
+      thumbnail_url: finalThumbnailUrl
+     });
   });
 });
 
