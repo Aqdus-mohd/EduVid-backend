@@ -139,7 +139,7 @@ router.delete("/:id", (req, res) => {
 });
 
 //EDIT
-router.put("/:id", upload.single("thumbnail"), (req, res) => {
+router.put("/:id", upload.single("thumbnail"),async(req, res) => {
   
   // Only allow teachers to make updates
   if (!req.user || req.user.role !== "teacher") {
