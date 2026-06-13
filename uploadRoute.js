@@ -158,7 +158,11 @@ router.put("/:id", upload.single("thumbnail"), (req, res) => {
   // If a new file is uploaded, use its path. If not, set it to null.
   let finalThumbnailUrl = null; 
   if (req.file) {
-    finalThumbnailUrl = req.file.path || req.file.secure_url || req.file.cloudinaryUrl || req.file.filename;
+    try {
+      finalThumbnailUrl = await uploadToCloudinary(req.file.buffer, "image");
+    } catch (cloudinaryError) {
+      return res.status(500).json({ message: "Error uploading new thumbnail image to Cloudinary." });
+    }
   }
 
   // 3. THE SAFE SQL QUERY:
