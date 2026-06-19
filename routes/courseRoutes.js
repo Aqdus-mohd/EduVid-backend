@@ -15,6 +15,21 @@ cloudinary.config({
 // 2. Setup Multer for memory storage
 const upload = multer({ storage: multer.memoryStorage() });
 
+//helper gunction to make cloudinary upload
+const uploadToCloudinary = (buffer, resourceType) => {
+  return new Promise((resolve, reject) => {
+    const stream = cloudinary.uploader.upload_stream(
+      { resource_type: resourceType, folder: "course_thumbnails" },
+      (error, result) => {
+        if (error) reject(error);
+        else resolve(result.secure_url);
+      }
+    );
+    streamifier.createReadStream(buffer).pipe(stream);
+  });
+};
+
+
 // --- ROUTE 1: GET ALL COURSES ---
 router.get("/", (req, res) => {
   const userId = req.user.id;
@@ -76,6 +91,55 @@ router.get("/all", (req, res) => {
   db.query(sql, (err, data) => {
     if (err) return res.status(500).json(err);
     return res.json(data);
+  });
+});
+
+
+// 1. DELETE COURSE ROUTE
+router.delete("/:id", (req, res) => {
+  if (!req.user || req.user.role !== "teacher") {
+    return res.status(403).json({ message: "Unauthorized. Teachers only." });
+  }
+
+  const courseId = req.params.id;
+
+  // Note: This will delete the course. Make sure your MySQL table doesn't block it due to foreign keys.
+  const sql = "DELETE FROM courses WHERE id = ?";
+  db.query(sql, [courseId], (err, result) => {
+    if (err) {
+      console.error("Database error:", err);
+      return res.status(500).json({ message: "Database error while deleting course." });
+    }
+    return res.json({ message: "Course successfully deleted!" });
+  });
+});
+
+// 2. EDIT / UPDATE COURSE ROUTE
+router.put("/:id", upload.single("thumbnail"), async (req, res) => {
+  if (!req.user || req.user.role !== "teacher") {
+    return res.status(403).json({ message: "Unauthorized." });
+  }
+
+  const courseId = req.params.id;
+  const { title } = req.body;
+
+  if (!title || title.trim() === "") {
+    return res.status(400).json({ message: "Course title cannot be empty." });
+  }
+  
+  let finalThumbnailUrl = null;
+  if (req.file) {
+    try {
+      finalThumbnailUrl = await uploadToCloudinary(req.file.buffer, "image");
+    } catch (err) {
+      return res.status(500).json({ message: "Cloudinary upload failed." });
+    }
+  }
+
+  const sql = "UPDATE courses SET title = ?, thumbnail_url = IFNULL(?, thumbnail_url) WHERE id = ?";
+  db.query(sql, [title.trim(), finalThumbnailUrl, courseId], (err, result) => {
+    if (err) return res.status(500).json({ message: "Database update error." });
+    return res.json({ message: "Course updated successfully!", thumbnail_url: finalThumbnailUrl });
   });
 });
 
