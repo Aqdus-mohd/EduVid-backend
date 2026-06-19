@@ -53,6 +53,44 @@ app.use("/api/courses", verifyToken, courseRoutes);
 app.get("/", (req, res) => {
   res.send("🚀 Backend is working!");
 });
+  
+//  NEW: GEMINI AI SECURE CHAT ENDPOINT
+app.post("/api/ai/ask", verifyToken, async (req, res) => {
+  const { prompt } = req.body;
+  if (!prompt) return res.status(400).json({ message: "Prompt text is required" });
+
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey) {
+    return res.status(500).json({ message: "Gemini API Key missing on server configurations." });
+  }
+
+  try {
+    // Contacting the standard, lighting-fast Gemini Flash engine directly
+    const response = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          contents: [{ parts: [{ text: prompt }] }]
+        })
+      }
+    );
+
+    const data = await response.json();
+    
+    // Safely dig through Google's JSON wrapper payload tree structure
+    const aiReply = data?.candidates?.[0]?.content?.parts?.[0]?.text || "Gemini could not generate a response.";
+    
+    return res.json({ reply: aiReply });
+  } catch (error) {
+    console.error("Gemini API Error:", error);
+    return res.status(500).json({ message: "Failed to connect to internal AI engines." });
+  }
+});
+
+
+
 
 app.post("/Register", async (req, res) => {
   // 👈 Make this async
