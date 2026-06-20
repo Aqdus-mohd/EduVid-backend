@@ -55,17 +55,23 @@ app.get("/", (req, res) => {
 });
   
 //  NEW: GEMINI AI SECURE CHAT ENDPOINT
+// ========================================================
+// 🤖 BULLETPROOF DEBUG GEMINI CHAT ENDPOINT
+// ========================================================
 app.post("/api/ai/ask", verifyToken, async (req, res) => {
   const { prompt } = req.body;
   if (!prompt) return res.status(400).json({ message: "Prompt text is required" });
 
   const apiKey = process.env.GEMINI_API_KEY;
+  
+  // 🚨 DEBUG CHECK 1: Is the key missing?
   if (!apiKey) {
-    return res.status(500).json({ message: "Gemini API Key missing on server configurations." });
+    return res.status(500).json({ 
+      message: "Backend Error: GEMINI_API_KEY is missing! Did you add it to your Render Environment tab?" 
+    });
   }
 
   try {
-    // Contacting the standard, lighting-fast Gemini Flash engine directly
     const response = await fetch(
       `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`,
       {
@@ -78,14 +84,23 @@ app.post("/api/ai/ask", verifyToken, async (req, res) => {
     );
 
     const data = await response.json();
+
+    // 🚨 DEBUG CHECK 2: Did Google return an error object?
+    if (data.error) {
+      return res.status(500).json({ 
+        message: `Google API rejected request: ${data.error.message} (Code: ${data.error.code})` 
+      });
+    }
     
-    // Safely dig through Google's JSON wrapper payload tree structure
     const aiReply = data?.candidates?.[0]?.content?.parts?.[0]?.text || "Gemini could not generate a response.";
-    
     return res.json({ reply: aiReply });
+
   } catch (error) {
     console.error("Gemini API Error:", error);
-    return res.status(500).json({ message: "Failed to connect to internal AI engines." });
+    // 🚨 DEBUG CHECK 3: Send the exact crash message to the screen
+    return res.status(500).json({ 
+      message: `Backend System Crash Exception: ${error.message}` 
+    });
   }
 });
 
