@@ -57,25 +57,25 @@ app.get("/", (req, res) => {
 //saving video
 app.post("/api/upload/save/:videoId", verifyToken, async (req, res) => {
   const { videoId } = req.params;
-  const userId = req.user.id; // Safely read user object properties from your token middleware
+  const userId = req.user.id; 
 
   try {
-    // 1. Check if this video is already saved by the current user
-    const [existingRow] = await db.query(
+    // 🚨 FIXED: Added .promise() wrapper to support async/await execution
+    const [existingRow] = await db.promise().query(
       "SELECT * FROM user_saved_videos WHERE user_id = ? AND video_id = ?",
       [userId, videoId]
     );
 
     if (existingRow && existingRow.length > 0) {
-      //Found a record: The user wants to UNSAVE the video
-      await db.query(
+      // Found a record: The user wants to UNSAVE the video
+      await db.promise().query(
         "DELETE FROM user_saved_videos WHERE user_id = ? AND video_id = ?",
         [userId, videoId]
       );
       return res.json({ message: "Video removed from saved list", isSaved: false });
     } else {
       // No record found: The user wants to SAVE the video
-      await db.query(
+      await db.promise().query(
         "INSERT INTO user_saved_videos (user_id, video_id) VALUES (?, ?)",
         [userId, videoId]
       );
