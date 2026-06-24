@@ -54,26 +54,39 @@ app.get("/", (req, res) => {
   res.send("🚀 Backend is working!");
 });
   
-//savinf video
+//saving video
 app.post("/api/upload/save/:videoId", verifyToken, async (req, res) => {
   const { videoId } = req.params;
-  const userId = req.user.id; // Extracted safely from verifyToken middleware
+  const userId = req.user.id; // Safely read user object properties from your token middleware
 
   try {
-    
-    const checkRow = await db.query("SELECT * FROM user_saved_videos WHERE user_id = ? AND video_id = ?", [userId, videoId]);
-    if (checkRow.length > 0) {
-      await db.query("DELETE FROM user_saved_videos WHERE user_id = ? AND video_id = ?", [userId, videoId]);
+    // 1. Check if this video is already saved by the current user
+    const [existingRow] = await db.query(
+      "SELECT * FROM user_saved_videos WHERE user_id = ? AND video_id = ?",
+      [userId, videoId]
+    );
+
+    if (existingRow && existingRow.length > 0) {
+      //Found a record: The user wants to UNSAVE the video
+      await db.query(
+        "DELETE FROM user_saved_videos WHERE user_id = ? AND video_id = ?",
+        [userId, videoId]
+      );
       return res.json({ message: "Video removed from saved list", isSaved: false });
     } else {
-      await db.query("INSERT INTO user_saved_videos (user_id, video_id) VALUES (?, ?)", [userId, videoId]);
+      // No record found: The user wants to SAVE the video
+      await db.query(
+        "INSERT INTO user_saved_videos (user_id, video_id) VALUES (?, ?)",
+        [userId, videoId]
+      );
       return res.json({ message: "Video saved successfully!", isSaved: true });
     }
-    
-
   } catch (error) {
-    console.error("Save video error:", error);
-    return res.status(500).json({ message: "Database transaction failed." });
+    console.error("MySQL Save Error:", error);
+    return res.status(500).json({ 
+      message: "Database transaction failed.", 
+      error: error.message 
+    });
   }
 });
 //   GEMINI AI SECURE CHAT ENDPOINT
