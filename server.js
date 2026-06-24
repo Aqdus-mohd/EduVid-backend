@@ -89,6 +89,22 @@ app.post("/api/upload/save/:videoId", verifyToken, async (req, res) => {
     });
   }
 });
+//get saved videos id
+app.get("/api/upload/saved-list-ids", verifyToken, async (req, res) => {
+  const userId = req.user.id;
+  try {
+    const [rows] = await db.promise().query(
+      "SELECT video_id FROM user_saved_videos WHERE user_id = ?",
+      [userId]
+    );
+    // Maps list format arrays from [{video_id: 102}] to a clean array flat-list [102]
+    const idList = rows.map(row => row.video_id);
+    return res.json(idList);
+  } catch (error) {
+    console.error("Fetch save list IDs error:", error);
+    return res.status(500).json([]);
+  }
+});
 //   GEMINI AI SECURE CHAT ENDPOINT
 // ========================================================
 // BULLETPROOF DEBUG GEMINI CHAT ENDPOINT
