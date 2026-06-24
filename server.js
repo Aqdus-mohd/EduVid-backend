@@ -105,6 +105,29 @@ app.get("/api/upload/saved-list-ids", verifyToken, async (req, res) => {
     return res.status(500).json([]);
   }
 });
+
+// ========================================================
+//FETCH FULL DETAILS OF ALL SAVED VIDEOS FOR A USER
+// ========================================================
+app.get("/api/upload/saved-videos-details", verifyToken, async (req, res) => {
+  const userId = req.user.id;
+
+  try {
+    // Uses a relational SQL JOIN to look up full video details based on saved matches
+    const [savedVideos] = await db.promise().query(
+      `SELECT v.* FROM videos v 
+       INNER JOIN user_saved_videos s ON v.id = s.video_id 
+       WHERE s.user_id = ? 
+       ORDER BY s.saved_at DESC`,
+      [userId]
+    );
+
+    return res.json(savedVideos);
+  } catch (error) {
+    console.error("Error fetching detailed saved videos:", error);
+    return res.status(500).json({ message: "Failed to load bookmark records." });
+  }
+});
 //   GEMINI AI SECURE CHAT ENDPOINT
 // ========================================================
 // BULLETPROOF DEBUG GEMINI CHAT ENDPOINT
