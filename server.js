@@ -54,9 +54,31 @@ app.get("/", (req, res) => {
   res.send("🚀 Backend is working!");
 });
   
-//  NEW: GEMINI AI SECURE CHAT ENDPOINT
+//savinf video
+app.post("/api/upload/save/:videoId", verifyToken, async (req, res) => {
+  const { videoId } = req.params;
+  const userId = req.user.id; // Extracted safely from verifyToken middleware
+
+  try {
+    
+    const checkRow = await db.query("SELECT * FROM user_saved_videos WHERE user_id = ? AND video_id = ?", [userId, videoId]);
+    if (checkRow.length > 0) {
+      await db.query("DELETE FROM user_saved_videos WHERE user_id = ? AND video_id = ?", [userId, videoId]);
+      return res.json({ message: "Video removed from saved list", isSaved: false });
+    } else {
+      await db.query("INSERT INTO user_saved_videos (user_id, video_id) VALUES (?, ?)", [userId, videoId]);
+      return res.json({ message: "Video saved successfully!", isSaved: true });
+    }
+    
+
+  } catch (error) {
+    console.error("Save video error:", error);
+    return res.status(500).json({ message: "Database transaction failed." });
+  }
+});
+//   GEMINI AI SECURE CHAT ENDPOINT
 // ========================================================
-// 🤖 BULLETPROOF DEBUG GEMINI CHAT ENDPOINT
+// BULLETPROOF DEBUG GEMINI CHAT ENDPOINT
 // ========================================================
 app.post("/api/ai/ask", verifyToken, async (req, res) => {
   const { prompt } = req.body;
