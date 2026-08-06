@@ -3,16 +3,15 @@ require('dotenv').config();
 
 const db = mysql.createPool({
   connectionLimit: 10, 
-  // 1. Swap hardcoded values for Environment Variables
   host: process.env.DB_HOST,
   user: process.env.DB_USER,
   password: process.env.DB_PASSWORD,
   database: process.env.DB_NAME,
-  port: process.env.DB_PORT,
+  port: process.env.DB_PORT || 4000, // Default TiDB port fallback
   
-  // 2. Aiven Security Requirement: Force an encrypted connection
+  // Enforce secure SSL connection required by TiDB Cloud
   ssl: {
-      rejectUnauthorized: false
+    rejectUnauthorized: true
   }
 });
 
@@ -21,7 +20,7 @@ db.getConnection((err, connection) => {
     console.error("❌ Error connecting to cloud database:", err);
   }
   if (connection) {
-    console.log("✅ Successfully connected to Aiven MySQL database!");
+    console.log("✅ Successfully connected to TiDB MySQL database!");
     connection.release();
   }
 });

@@ -16,7 +16,7 @@ const db = require("./db");
 const uploadRoutes = require("./uploadRoute");
 const courseRoutes = require("./routes/courseRoutes");
 
-// 🛑 THE MIDDLEWARE BOUNCER 🛑
+// THE MIDDLEWARE BOUNCER 
 const verifyToken = (req, res, next) => {
   // 1. Check if there is an Authorization header
   const authHeader = req.headers["authorization"];
